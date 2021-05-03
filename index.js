@@ -37,6 +37,7 @@ class Block {
         this.prevHash = prevHash;
         this.transaction = transaction;
         this.ts = ts;
+        this.nonce = Math.round(Math.random() * 9999999999);
     }
     get hash() {
         const str = JSON.stringify(this);
@@ -60,7 +61,22 @@ class Chain {
         const isValid = verifier.verify(senderPublicKey, signature);
         if (isValid) {
             const newBlock = new Block(this.lastBlock.hash, transaction);
+            this.mine(newBlock.nonce);
             this.chain.push(newBlock);
+        }
+    }
+    mine(nonce) {
+        let solution = 1;
+        console.log('mining...');
+        while (true) {
+            const hash = crypto.createHash('MD5');
+            hash.update((nonce + solution).toString()).end();
+            const attempt = hash.digest('hex');
+            if (attempt.substr(0, 4) === '0000') {
+                console.log(`Solved: ${solution}`);
+                return solution;
+            }
+            solution += 1;
         }
     }
 }
