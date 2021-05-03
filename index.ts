@@ -1,5 +1,6 @@
 import * as crypto from 'crypto'
 
+// Handles funds transfer for payer->payee wallet
 class Transaction {
   constructor(
     public amount: number,
@@ -12,14 +13,16 @@ class Transaction {
   }
 }
 
+// Single block on the chain
 class Block {
     public nonce = Math.round(Math.random() * 9999999999)
     constructor(
         public prevHash: string,
         public transaction: Transaction,
-        public ts = Date.now(),
+        public timestamp = Date.now(),
     ) {}
-
+    
+    // writes data as SHA256 hash
     get hash() {
         const str = JSON.stringify(this)
         const hash = crypto.createHash('SHA256')
@@ -35,13 +38,16 @@ class Chain {
     chain: Block[]
 
     constructor() {
-        this.chain = [new Block(null, new Transaction(100, 'genesis', 'satoshi'))]
+        // Creates genesis block
+        this.chain = [new Block('', new Transaction(100, 'genesis', 'satoshi'))]
     }
 
+    // Gets most recent block
     get lastBlock() {
         return this.chain[this.chain.length -1]
    }
 
+   // Add new block to chain if signature and proof-of-work are valid
    addBlock(transaction: Transaction, senderPublicKey: string, signature: Buffer) {
     //    const newBlock = new Block(this.lastBlock.hash, transaction)
     //    this.chain.push(newBlock)
@@ -58,6 +64,7 @@ class Chain {
     }
    }
 
+   // validation for proof-of-work
    mine(nonce: number) {
        let solution = 1
        console.log('mining...')
@@ -71,11 +78,14 @@ class Chain {
                console.log(`Solved: ${solution}`)
                return solution
            }
+           
+           // mining algo goes here :)
            solution += 1
        }
    }
 }
 
+// Creates public and private key pair for user
 class Wallet {
     public publicKey: string
     public privateKey: string
@@ -86,8 +96,12 @@ class Wallet {
             publicKeyEncoding: { type: 'spki', format: 'pem' },
             privateKeyEncoding: {type: 'pkcs8', format: 'pem'}
         })
+
+    this.privateKey = keypair.privateKey;
+    this.publicKey = keypair.publicKey;
     }
 
+    // handles signing for sending
     sendMoney(amount: number, payeePublicKey: string) {
         const transaction = new Transaction(amount, this.publicKey, payeePublicKey)
 
@@ -98,3 +112,14 @@ class Wallet {
         Chain.instance.addBlock(transaction, this.publicKey, signature)
     }
 }
+
+// Built-in example usage - use `npm run start` for live implementation
+const satoshi = new Wallet()
+const connor = new Wallet()
+const james = new Wallet()
+
+satoshi.sendMoney(50, connor.publicKey)
+connor.sendMoney(20, james.publicKey)
+james.sendMoney(5, satoshi.publicKey)
+
+console.log(Chain.instance)

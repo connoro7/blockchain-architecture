@@ -20,6 +20,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const crypto = __importStar(require("crypto"));
+// Handles funds transfer for payer->payee wallet
 class Transaction {
     constructor(amount, payer, // public key
     payee // public key
@@ -32,13 +33,15 @@ class Transaction {
         return JSON.stringify(this);
     }
 }
+// Single block on the chain
 class Block {
-    constructor(prevHash, transaction, ts = Date.now()) {
+    constructor(prevHash, transaction, timestamp = Date.now()) {
         this.prevHash = prevHash;
         this.transaction = transaction;
-        this.ts = ts;
+        this.timestamp = timestamp;
         this.nonce = Math.round(Math.random() * 9999999999);
     }
+    // writes data as SHA256 hash
     get hash() {
         const str = JSON.stringify(this);
         const hash = crypto.createHash('SHA256');
@@ -48,11 +51,14 @@ class Block {
 }
 class Chain {
     constructor() {
-        this.chain = [new Block(null, new Transaction(100, 'genesis', 'satoshi'))];
+        // Creates genesis block
+        this.chain = [new Block('', new Transaction(100, 'genesis', 'satoshi'))];
     }
+    // Gets most recent block
     get lastBlock() {
         return this.chain[this.chain.length - 1];
     }
+    // Add new block to chain if signature and proof-of-work are valid
     addBlock(transaction, senderPublicKey, signature) {
         //    const newBlock = new Block(this.lastBlock.hash, transaction)
         //    this.chain.push(newBlock)
@@ -65,6 +71,7 @@ class Chain {
             this.chain.push(newBlock);
         }
     }
+    // validation for proof-of-work
     mine(nonce) {
         let solution = 1;
         console.log('mining...');
@@ -76,11 +83,13 @@ class Chain {
                 console.log(`Solved: ${solution}`);
                 return solution;
             }
+            // mining algo goes here :)
             solution += 1;
         }
     }
 }
 Chain.instance = new Chain(); // Singleton
+// Creates public and private key pair for user
 class Wallet {
     constructor() {
         const keypair = crypto.generateKeyPairSync('rsa', {
@@ -88,7 +97,10 @@ class Wallet {
             publicKeyEncoding: { type: 'spki', format: 'pem' },
             privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
         });
+        this.privateKey = keypair.privateKey;
+        this.publicKey = keypair.publicKey;
     }
+    // handles signing for sending
     sendMoney(amount, payeePublicKey) {
         const transaction = new Transaction(amount, this.publicKey, payeePublicKey);
         const sign = crypto.createSign('SHA256');
@@ -97,3 +109,11 @@ class Wallet {
         Chain.instance.addBlock(transaction, this.publicKey, signature);
     }
 }
+// Built-in example usage - use `npm run start` for live implementation
+const satoshi = new Wallet();
+const connor = new Wallet();
+const james = new Wallet();
+satoshi.sendMoney(50, connor.publicKey);
+connor.sendMoney(20, james.publicKey);
+james.sendMoney(5, satoshi.publicKey);
+console.log(Chain.instance);
